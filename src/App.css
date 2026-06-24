@@ -1,0 +1,359 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  -webkit-app-region: drag;
+}
+
+/* Glassmorphism widget */
+.widget {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 0 0 12px 12px;
+  padding: 8px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-top: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  -webkit-app-region: no-drag;
+}
+
+/* Draggable title bar */
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  -webkit-app-region: drag;
+}
+
+.title-bar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: 0.3px;
+}
+
+.title-bar-actions {
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.title-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.15s;
+  padding: 0;
+}
+
+.title-btn:hover {
+  filter: brightness(1.2);
+  transform: scale(1.15);
+}
+
+.title-btn.active {
+  filter: brightness(0.85);
+}
+
+.btn-close {
+  background: #e74c3c;
+}
+
+.btn-minimize {
+  background: #f1c40f;
+}
+
+.btn-settings {
+  background: #3498db;
+}
+
+/* Sentence display */
+.sentence-display {
+  text-align: center;
+  padding: 12px 0 4px;
+}
+
+.sentence-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #e67e22;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.sentence-text {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #1a1a2e;
+  font-style: italic;
+  padding: 0 4px;
+}
+
+/* Input area */
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-area label {
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.translation-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.translation-input:focus {
+  border-color: #e67e22;
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+}
+
+.translation-input:disabled {
+  background: rgba(200, 200, 200, 0.1);
+  cursor: not-allowed;
+}
+
+.check-btn {
+  padding: 9px 20px;
+  background: #e67e22;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  -webkit-app-region: no-drag;
+}
+
+.check-btn:hover {
+  background: #d35400;
+}
+
+.check-btn:active {
+  transform: scale(0.98);
+}
+
+.check-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Feedback */
+.feedback {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.feedback.correct {
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.25);
+  color: #27ae60;
+}
+
+.feedback.incorrect {
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  color: #c0392b;
+}
+
+.correct-answer {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #555;
+}
+
+.correct-answer em {
+  color: #1a1a2e;
+  font-style: italic;
+}
+
+.feedback-text {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #777;
+}
+
+/* Footer */
+.footer-info {
+  text-align: center;
+  font-size: 10px;
+  color: #bbb;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 14px;
+  color: #999;
+}
+
+/* Error state */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  font-size: 13px;
+  color: #c0392b;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Settings overlay */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
+}
+
+.settings-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  width: 320px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.settings-desc {
+  font-size: 12px;
+  color: #777;
+  line-height: 1.5;
+}
+
+.settings-desc a {
+  color: #e67e22;
+  text-decoration: none;
+}
+
+.settings-desc a:hover {
+  text-decoration: underline;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e8e8e8;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.settings-input:focus {
+  border-color: #e67e22;
+}
+
+.startup-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.startup-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #e67e22;
+  cursor: pointer;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cancel-btn {
+  padding: 9px 20px;
+  background: transparent;
+  color: #777;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #f5f5f5;
+}
