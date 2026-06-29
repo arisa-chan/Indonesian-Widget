@@ -1,10 +1,18 @@
+export interface VocabularyItem {
+  word: string
+  translation: string
+}
+
 export interface SentenceRecord {
   date: string
   indonesian: string
   englishTranslation: string
+  vocabulary: VocabularyItem[]
+  cefr: string
   userAttempt: string | null
   attemptCorrect: boolean | null
   attemptedAt: string | null
+  resetUsed: boolean
 }
 
 export interface ValidationResult {

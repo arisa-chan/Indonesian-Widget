@@ -221,3 +221,65 @@ const outDir = path.join(__dirname, '..', 'build')
 fs.mkdirSync(outDir, { recursive: true })
 fs.writeFileSync(path.join(outDir, 'icon.png'), createPNG(size, size, pixels))
 console.log('✓ Generated build/icon.png (Indonesian flag design with ID monogram)')
+
+// Generate a 32x32 tray icon — simpler, bolder design for small sizes
+const traySize = 32
+const trayPixels = Buffer.alloc(traySize * traySize * 4)
+
+// Indonesian flag: red top half (14px), white bottom half (18px)
+const splitY = 14
+for (let y = 0; y < traySize; y++) {
+  for (let x = 0; x < traySize; x++) {
+    const isRed = y < splitY
+    const idx = (y * traySize + x) * 4
+    trayPixels[idx] = isRed ? 206 : 255
+    trayPixels[idx + 1] = isRed ? 17 : 255
+    trayPixels[idx + 2] = isRed ? 38 : 255
+    trayPixels[idx + 3] = 255
+  }
+}
+
+// Bold "ID" letters at 32x32 — simple bitmap
+// I: vertical bar from y=6 to y=26, x=5 to x=8
+for (let y = 6; y <= 26; y++) {
+  for (let x = 5; x <= 8; x++) {
+    const idx = (y * traySize + x) * 4
+    trayPixels[idx] = 255; trayPixels[idx + 1] = 215; trayPixels[idx + 2] = 0
+  }
+}
+// I: top bar
+for (let y = 4; y <= 8; y++) {
+  for (let x = 3; x <= 10; x++) {
+    const idx = (y * traySize + x) * 4
+    trayPixels[idx] = 255; trayPixels[idx + 1] = 215; trayPixels[idx + 2] = 0
+  }
+}
+// I: bottom bar
+for (let y = 24; y <= 28; y++) {
+  for (let x = 3; x <= 10; x++) {
+    const idx = (y * traySize + x) * 4
+    trayPixels[idx] = 255; trayPixels[idx + 1] = 215; trayPixels[idx + 2] = 0
+  }
+}
+
+// D: stem from y=6 to y=26, x=15 to x=17
+for (let y = 6; y <= 26; y++) {
+  for (let x = 15; x <= 17; x++) {
+    const idx = (y * traySize + x) * 4
+    trayPixels[idx] = 255; trayPixels[idx + 1] = 215; trayPixels[idx + 2] = 0
+  }
+}
+// D: curved bowl (filled arc on the right of the stem)
+const dCenterX = 17, dCenterY = 16, dRadius = 7
+for (let y = 6; y <= 26; y++) {
+  for (let x = 17; x <= 26; x++) {
+    const dx = x - dCenterX, dy = y - dCenterY
+    if (dx * dx + dy * dy <= dRadius * dRadius) {
+      const idx = (y * traySize + x) * 4
+      trayPixels[idx] = 255; trayPixels[idx + 1] = 215; trayPixels[idx + 2] = 0
+    }
+  }
+}
+
+fs.writeFileSync(path.join(outDir, 'tray-icon.png'), createPNG(traySize, traySize, trayPixels))
+console.log('✓ Generated build/tray-icon.png (32x32 tray icon)')

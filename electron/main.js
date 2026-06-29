@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron')
 const path = require('path')
-const fs = require('fs')
 const zlib = require('zlib')
 
 let mainWindow = null
@@ -70,25 +69,115 @@ function createPNG(width, height, pixels) {
 }
 
 function createTrayIcon() {
-  // Load the build icon and resize for tray
-  const iconPath = path.join(__dirname, '..', 'build', 'icon.png')
-  let icon
-  try {
-    const iconPng = fs.readFileSync(iconPath)
-    icon = nativeImage.createFromBuffer(iconPng).resize({ width: 32, height: 32 })
-  } catch {
-    // Fallback: solid color icon if build icon doesn't exist
-    const size = 32
-    const pixels = Buffer.alloc(size * size * 4)
-    for (let i = 0; i < size * size; i++) {
-      pixels[i * 4] = 230
-      pixels[i * 4 + 1] = 126
-      pixels[i * 4 + 2] = 34
-      pixels[i * 4 + 3] = 255
+  const size = 32
+  const pixels = Buffer.alloc(size * size * 4)
+
+  const RED = [206, 17, 38]
+  const WHITE = [255, 255, 255]
+
+  // Draw Indonesian flag: red top half, white bottom half
+  for (let y = 0; y < size; y++) {
+    const isRed = y < size / 2
+    const color = isRed ? RED : WHITE
+    for (let x = 0; x < size; x++) {
+      const idx = (y * size + x) * 4
+      pixels[idx] = color[0]
+      pixels[idx + 1] = color[1]
+      pixels[idx + 2] = color[2]
+      pixels[idx + 3] = 255
     }
-    icon = nativeImage.createFromBuffer(createPNG(size, size, pixels))
   }
 
+  // Draw bold "ID" letters using a simple bitmap font (5x7 per letter, scaled to fit)
+  const charW = 3
+  const charH = 5
+  const startX = 7
+  const startY = 8
+  const gap = 3
+
+  // "I" — vertical bar
+  function drawI(ox, oy, c) {
+    for (let y = 0; y < charH; y++) {
+      for (let x = 0; x < charW; x++) {
+        if (x >= 1 && x <= 2) {
+          const px = ox + x
+          const py = oy + y
+          if (px >= 0 && px < size && py >= 0 && py < size) {
+            const idx = (py * size + px) * 4
+            pixels[idx] = c[0]; pixels[idx + 1] = c[1]; pixels[idx + 2] = c[2]
+          }
+        }
+      }
+    }
+    // top bar
+    for (let x = 0; x < charW + 1; x++) {
+      for (let row = 0; row < 2; row++) {
+        const px = ox - 1 + x; const py = oy + row
+        if (px >= 0 && px < size && py >= 0 && py < size) {
+          const idx = (py * size + px) * 4
+          pixels[idx] = c[0]; pixels[idx + 1] = c[1]; pixels[idx + 2] = c[2]
+        }
+      }
+    }
+    // bottom bar
+    for (let x = 0; x < charW + 1; x++) {
+      for (let row = charH - 2; row < charH; row++) {
+        const px = ox - 1 + x; const py = oy + row
+        if (px >= 0 && px < size && py >= 0 && py < size) {
+          const idx = (py * size + px) * 4
+          pixels[idx] = c[0]; pixels[idx + 1] = c[1]; pixels[idx + 2] = c[2]
+        }
+      }
+    }
+  }
+
+  // "D" — vertical stem + semicircle
+  function drawD(ox, oy, c) {
+    // vertical stem
+    for (let y = 0; y < charH; y++) {
+      for (let x = 0; x < charW; x++) {
+        if (x >= 0 && x <= 1) {
+          const px = ox + x; const py = oy + y
+          if (px >= 0 && px < size && py >= 0 && py < size) {
+            const idx = (py * size + px) * 4
+            pixels[idx] = c[0]; pixels[idx + 1] = c[1]; pixels[idx + 2] = c[2]
+          }
+        }
+      }
+    }
+    // curved right side (simplified as filled block with rounded feel)
+    for (let y = 1; y < charH - 1; y++) {
+      for (let x = 1; x < charW + 2; x++) {
+        if (x >= 2) {
+          const dist = Math.abs(y - Math.floor(charH / 2))
+          if (dist < Math.floor(charH / 2) - 1 || (x <= 3 && dist <= Math.floor(charH / 2))) {
+            const px = ox + x; const py = oy + y
+            if (px >= 0 && px < size && py >= 0 && py < size) {
+              const idx = (py * size + px) * 4
+              pixels[idx] = c[0]; pixels[idx + 1] = c[1]; pixels[idx + 2] = c[2]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Draw I and D — use contrasting color per half
+  const iX = startX
+  const dX = startX + charW + gap
+  // I on the red half gets white, on white half gets red
+  drawI(iX, startY, RED) // I top part (red on red... invisible)
+  drawI(iX, startY + Math.ceil(charH / 3), WHITE) // I middle-bottom
+
+  // Simpler approach: draw letters that span both halves — use a contrasting 3rd color
+  const GOLD = [255, 220, 50]
+
+  // Redraw I and D in gold for full visibility across the flag split
+  // Clear the old attempts and use gold
+  drawI(iX, startY, GOLD)
+  drawD(dX, startY, GOLD)
+
+  const icon = nativeImage.createFromBuffer(createPNG(size, size, pixels))
   tray = new Tray(icon)
   tray.setToolTip('Indonesian Widget')
 
@@ -114,7 +203,6 @@ function createTrayIcon() {
 
   tray.setContextMenu(contextMenu)
 
-  // Left-click toggles show/hide
   tray.on('click', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {

@@ -219,6 +219,201 @@
   color: #777;
 }
 
+/* Sentence header with reset button */
+.sentence-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 20px;
+}
+
+.sentence-spacer {
+  flex: 1;
+}
+
+.reset-btn {
+  background: transparent;
+  color: #e67e22;
+  border: 1px solid rgba(230, 126, 34, 0.3);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background: rgba(230, 126, 34, 0.1);
+  border-color: #e67e22;
+}
+
+.reset-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Footer bar */
+.footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 4px;
+  min-height: 28px;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+}
+
+.elo-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: #e67e22;
+  background: rgba(230, 126, 34, 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.cefr-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #2c3e50;
+  background: rgba(44, 62, 80, 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* Vocabulary FAB */
+.vocab-fab {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  padding: 0;
+}
+
+.vocab-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 14px rgba(230, 126, 34, 0.5);
+}
+
+.vocab-fab:active {
+  transform: scale(0.95);
+}
+
+/* Vocab overlay & panel */
+.vocab-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+  backdrop-filter: blur(2px);
+  -webkit-app-region: no-drag;
+}
+
+.vocab-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 0;
+  width: 300px;
+  max-height: 340px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vocab-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.vocab-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.vocab-close:hover {
+  color: #e74c3c;
+}
+
+.vocab-list {
+  padding: 8px 16px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vocab-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 13px;
+}
+
+.vocab-row:last-child {
+  border-bottom: none;
+}
+
+.vocab-word {
+  font-weight: 600;
+  color: #1a1a2e;
+  min-width: 80px;
+}
+
+.vocab-arrow {
+  color: #ccc;
+  margin: 0 10px;
+  font-size: 12px;
+}
+
+.vocab-translation {
+  color: #777;
+  font-style: italic;
+}
+
 /* Footer */
 .footer-info {
   text-align: center;

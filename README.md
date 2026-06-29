@@ -5,12 +5,17 @@
 A lightweight, always-on-top desktop widget that helps you learn Indonesian (Bahasa Indonesia) with a new sentence every day. Type your English translation and get AI-powered feedback — all from a frameless, glassmorphism widget that lives in your system tray.
 
 ![Widget Preview](https://img.shields.io/badge/platform-Windows-blue)
-![Version](https://img.shields.io/badge/version-1.0.0-green)
+![Version](https://img.shields.io/badge/version-1.1.0-green)
 
 ## Features
 
-- **Daily Indonesian Sentences** — One new A2-level sentence every day on topics like greetings, food, travel, work, and family
+- **Daily Indonesian Sentences** — One new sentence every day with massive variety: 210+ sentence styles, 100+ topics, 28 moods, 16 registers, and 12 narrative persons
+- **Sentence Reset** — Don't like today's sentence? Press Reset to get a completely different one (once per day)
 - **AI-Powered Translation Check** — OpenRouter validates your English translation against the correct answer, accepting natural paraphrases
+- **Vocabulary Panel** — After checking your answer, tap the floating 📚 button to see word-by-word translations used in the sentence
+- **Elo Difficulty Rating** — A dynamic difficulty score that adjusts based on your performance — correct answers lower it, wrong answers raise it
+- **CEFR Level Indicator** — Each sentence displays its estimated CEFR level (A1–C2) for progress tracking
+- **Fancy Tray Icon** — Indonesian flag (red & white) with gold "ID" monogram in the system tray
 - **Frameless Transparent Widget** — Stays on top of all windows without getting in the way
 - **System Tray Integration** — Minimizes to tray, runs unobtrusively in the background
 - **Automatic Day Detection** — Refreshes the sentence when a new day starts
@@ -57,7 +62,7 @@ To build the installer:
 npm run dist
 ```
 
-This generates an NSIS installer at `release/Indonesian Widget Setup 1.0.0.exe`.
+This generates an NSIS installer at `release/Indonesian Widget Setup 1.1.0.exe`.
 
 To build only the frontend assets (without packaging):
 
@@ -75,6 +80,8 @@ npm run build
 | **Quit app** | Right-click tray icon → Quit |
 | **Open settings** | Click the blue settings button |
 | **Check translation** | Type in the input box and click "Check Answer" |
+| **Reset sentence** | Click the "↻ Reset" button (once per day) |
+| **View vocabulary** | After checking, click the orange 📚 button at bottom-right |
 
 ## Tech Stack
 
@@ -100,7 +107,7 @@ indonesian-widget/
 │   ├── App.css         # All styles (glassmorphism)
 │   ├── api.ts          # OpenRouter API integration
 │   ├── storage.ts      # localStorage persistence
-│   ├── components/     # UI components
+│   ├── components/     # UI components (SentenceDisplay, TranslationInput, FeedbackDisplay, VocabularyPanel, etc.)
 │   └── types/          # TypeScript interfaces
 ├── scripts/            # Build utilities
 ├── build/              # Generated assets (icons)
