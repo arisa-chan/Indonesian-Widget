@@ -52,7 +52,14 @@ async function callOpenRouter(
   }
 
   const data = await res.json()
-  return data.choices[0].message.content.trim()
+  const content = data?.choices?.[0]?.message?.content
+  if (typeof content !== 'string') {
+    throw new Error(
+      'Unexpected API response: missing content. ' +
+      'The model may have returned an empty or malformed reply. Try again.'
+    )
+  }
+  return content.trim()
 }
 
 function getDaySeed(): number {
@@ -553,7 +560,8 @@ const FORBIDDEN_PATTERNS = [
 
 export async function generateSentence(
   apiKey: string,
-  previousSentences: string[] = []
+  previousSentences: string[] = [],
+  targetCefr: string = 'A1'
 ): Promise<{ indonesian: string; translation: string; cefr: string; vocabulary: VocabularyItem[] }> {
   const seed = getDaySeed()
   const style = pickFrom(SENTENCE_STYLES, seed)
@@ -568,7 +576,7 @@ export async function generateSentence(
 
   const forbiddenList = FORBIDDEN_PATTERNS.map((p, i) => `${i + 1}. ${p}`).join('\n')
 
-  const systemPrompt = `You are a wildly creative Bahasa Indonesia teacher. Generate ONE Indonesian sentence for an A2-level learner. Every single day must be completely different — different structure, different rhythm, different vocabulary, different everything.
+  const systemPrompt = `You are a wildly creative Bahasa Indonesia teacher. Generate ONE Indonesian sentence for a ${targetCefr}-level learner. Every single day must be completely different — different structure, different rhythm, different vocabulary, different everything.
 
 BLOCKED PATTERNS — never produce anything like these:
 ${forbiddenList}
@@ -578,7 +586,7 @@ ABSOLUTE VARIETY MANDATE:
 - Sentence TYPE must bounce around: declarative statements, interrogative questions, imperative commands, exclamatory outbursts, optative wishes.
 - Sentence STRUCTURE must cycle: simple single-clause, compound with conjunctions, complex with subordinate clauses, compound-complex with multiple clause types woven together.
 - Sentence LENGTH must vary wildly: from terse 1-word fragments to sprawling 25+ word sentences that paint a full picture.
-- VOCABULARY must be diverse. Never lean on the same nouns/verbs/adjectives two days in a row. Explore the entire Indonesian lexicon appropriate for A2.
+- VOCABULARY must be diverse. Never lean on the same nouns/verbs/adjectives two days in a row. Explore the entire Indonesian lexicon appropriate for ${targetCefr}.
 - The sentence must sound NATURAL — the way real Indonesians actually speak in daily life, not robotic textbook examples.
 - Deploy the full range of Indonesian grammar: "me-" and "ber-" verbs, "di-" passives, "ter-" accidentals/statives, "me-kan" and "me-i" suffixes, "ke-an" and "pe-an"/"per-an" circumfixes, reduplication for plurals/reciprocals/intensity, "se-" prefix, "-nya" suffix in all its uses, particles like "lah"/"kah"/"pun"/"sih"/"dong"/"deh"/"kok".
 - Vary the REGISTER: some days use formal "bahasa baku", other days informal colloquial, other days Jakarta-influenced casual speech with "gue"/"lo".
@@ -617,11 +625,32 @@ Instruction: ${style.instruction}
 Generate exactly ONE Indonesian sentence that satisfies ALL of the above parameters simultaneously. Make it feel spontaneous, natural, and completely unlike any sentence from previous days. Do not force it — the sentence should feel like it naturally emerged from a real conversation or thought.`
 
   const result = await callOpenRouter(apiKey, systemPrompt, userPrompt, 1.0, { type: 'json_object' })
-  const parsed = JSON.parse(result)
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(result)
+  } catch (parseErr: any) {
+    // Try to extract JSON from the response (sometimes the model wraps it in markdown)
+    const jsonMatch = result.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0])
+      } catch {
+        throw new Error('Failed to parse sentence from API. The model returned invalid JSON. Please try again.')
+      }
+    } else {
+      throw new Error('Failed to parse sentence from API. The model returned invalid JSON. Please try again.')
+    }
+  }
+
+  if (!parsed || typeof parsed.indonesian !== 'string' || typeof parsed.english !== 'string') {
+    throw new Error('API returned an incomplete sentence. Missing "indonesian" or "english" field. Please try again.')
+  }
+
   return {
     indonesian: parsed.indonesian,
     translation: parsed.english,
-    cefr: parsed.cefr || 'A2',
+    cefr: parsed.cefr || targetCefr,
     vocabulary: Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [],
   }
 }
@@ -650,5 +679,30 @@ Respond in JSON format:
 }`
 
   const result = await callOpenRouter(apiKey, prompt, 'Validate this translation.', 0.3, { type: 'json_object' })
-  return JSON.parse(result)
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(result)
+  } catch {
+    const jsonMatch = result.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0])
+      } catch {
+        throw new Error('Failed to parse validation result. The model returned invalid JSON. Please try again.')
+      }
+    } else {
+      throw new Error('Failed to parse validation result. The model returned invalid JSON. Please try again.')
+    }
+  }
+
+  if (!parsed || typeof parsed.correct !== 'boolean') {
+    throw new Error('API returned an incomplete validation result. Please try again.')
+  }
+
+  return {
+    correct: parsed.correct,
+    correctTranslation: parsed.correctTranslation || correctTranslation,
+    feedback: parsed.feedback || (parsed.correct ? 'Good job!' : 'Keep trying!'),
+  }
 }

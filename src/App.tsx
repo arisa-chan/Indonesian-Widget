@@ -14,6 +14,7 @@ import {
   loadAllSentences,
   getEloRating,
   adjustElo,
+  getCefrFromElo,
   getTodayResetUsed,
   markTodayReset,
 } from './storage'
@@ -45,7 +46,10 @@ function App() {
       recentSentences.push(sentence.indonesian)
     }
 
-    const { indonesian, translation, cefr, vocabulary } = await generateSentence(apiKey, recentSentences)
+    const currentElo = getEloRating()
+    const targetCefr = getCefrFromElo(currentElo)
+
+    const { indonesian, translation, cefr, vocabulary } = await generateSentence(apiKey, recentSentences, targetCefr)
     const record = saveTodaySentence(indonesian, translation, vocabulary, cefr)
     return record
   }, [sentence])
@@ -153,6 +157,7 @@ function App() {
 
   const alreadyCorrect = sentence?.attemptCorrect === true
   const showVocabButton = validationResult !== null || alreadyCorrect
+  const currentTargetCefr = getCefrFromElo(eloRating)
 
   return (
     <div className="app-container">
@@ -202,12 +207,12 @@ function App() {
         {!showSettings && (
           <div className="footer-bar">
             <div className="footer-left">
-              <span className="elo-badge" title="Sentence difficulty rating (adjusts based on your answers)">
-                Elo: {eloRating}
+              <span className="elo-badge" title="Your Elo rating — adjusts based on correct/incorrect answers">
+                {currentTargetCefr} · Elo: {eloRating}
               </span>
               {sentence && (
-                <span className="cefr-badge" title="Estimated CEFR level of this sentence">
-                  CEFR: {sentence.cefr}
+                <span className="cefr-badge" title="Estimated CEFR level of today's sentence">
+                  Sentence: {sentence.cefr}
                 </span>
               )}
             </div>

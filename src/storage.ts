@@ -3,6 +3,23 @@ import { SentenceRecord, VocabularyItem } from './types'
 const STORAGE_KEY = 'indonesian_widget_sentences'
 const ELO_KEY = 'indonesian_widget_elo'
 
+// CEFR level mapped to Elo rating ranges
+export const CEFR_ELO_RANGES: { cefr: string; min: number; max: number }[] = [
+  { cefr: 'A1', min: 0, max: 799 },
+  { cefr: 'A2', min: 800, max: 1199 },
+  { cefr: 'B1', min: 1200, max: 1599 },
+  { cefr: 'B2', min: 1600, max: 1999 },
+  { cefr: 'C1', min: 2000, max: 2399 },
+  { cefr: 'C2', min: 2400, max: 3000 },
+]
+
+export function getCefrFromElo(elo: number): string {
+  for (const range of CEFR_ELO_RANGES) {
+    if (elo <= range.max) return range.cefr
+  }
+  return 'C2'
+}
+
 export function loadAllSentences(): SentenceRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -26,7 +43,7 @@ export function saveTodaySentence(
   indonesian: string,
   englishTranslation: string,
   vocabulary: VocabularyItem[] = [],
-  cefr: string = 'A2'
+  cefr: string = 'A1'
 ): SentenceRecord {
   const today = new Date().toISOString().split('T')[0]
   const records = loadAllSentences()
@@ -88,17 +105,18 @@ export function updateTodayAttempt(
 export function getEloRating(): number {
   try {
     const raw = localStorage.getItem(ELO_KEY)
-    return raw ? parseInt(raw, 10) : 1200
+    return raw ? parseInt(raw, 10) : 400
   } catch {
-    return 1200
+    return 400
   }
 }
 
 export function adjustElo(correct: boolean): number {
   const current = getEloRating()
   const K = 32
-  const change = correct ? -(K / 2) : K / 2
-  const newRating = Math.max(400, Math.min(3000, current + change))
+  // Correct answer: Elo goes UP (harder sentences). Wrong answer: Elo goes DOWN (easier).
+  const change = correct ? K / 2 : -(K / 2)
+  const newRating = Math.max(0, Math.min(3000, current + change))
   localStorage.setItem(ELO_KEY, String(Math.round(newRating)))
   return Math.round(newRating)
 }
