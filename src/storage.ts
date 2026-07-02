@@ -105,6 +105,7 @@ export function updateTodayAttempt(
 export function getEloRating(): number {
   try {
     const raw = localStorage.getItem(ELO_KEY)
+    // Default to 400 (A1) for new users — the lowest proficiency level
     return raw ? parseInt(raw, 10) : 400
   } catch {
     return 400
@@ -113,10 +114,12 @@ export function getEloRating(): number {
 
 export function adjustElo(correct: boolean): number {
   const current = getEloRating()
-  const K = 32
-  // Correct answer: Elo goes UP (harder sentences). Wrong answer: Elo goes DOWN (easier).
-  const change = correct ? K / 2 : -(K / 2)
-  const newRating = Math.max(0, Math.min(3000, current + change))
-  localStorage.setItem(ELO_KEY, String(Math.round(newRating)))
-  return Math.round(newRating)
+  const K = 40
+  // Asymmetric adjustment: wrong answers penalize twice as hard as correct answers reward.
+  // This ensures the difficulty drops quickly when the user struggles,
+  // preventing frustration from overly difficult sentences.
+  const change = correct ? K / 2 : -K
+  const newRating = Math.max(0, Math.min(3000, Math.round(current + change)))
+  localStorage.setItem(ELO_KEY, String(newRating))
+  return newRating
 }

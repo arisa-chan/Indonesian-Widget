@@ -1,5 +1,43 @@
 # Release Notes
 
+## 1.3.0 (2026-07-02)
+
+Elo rating fixes — starting proficiency corrected to A1, and wrong answers now properly decrease your rating.
+
+### Bug Fixes
+
+- **Fixed default proficiency level** — New users now correctly start at A1 (Elo 400) instead of incorrectly showing B1 (Elo 1200) on first install
+- **Fixed Elo rating not decreasing on wrong answers** — The Elo adjustment now uses asymmetric scaling: correct answers grant +20 points, while wrong answers penalize −40 points. This ensures struggling users quickly receive easier sentences. Previously, the symmetric ±16 change was nearly invisible and the rating appeared stuck
+- **Elo now adjusts even on API errors** — If the translation validation API fails, the answer is marked as incorrect and the Elo still decreases (rather than silently doing nothing)
+
+### Installation
+
+Download **Indonesian Widget Setup 1.3.0.exe** from the release assets and run the installer. The app launches automatically after installation.
+
+### System Requirements
+
+- **OS:** Windows 10 or later (64-bit)
+- **RAM:** 256 MB minimum
+- **Disk:** ~150 MB for the application
+- **Network:** Internet connection required for fetching sentences from OpenRouter
+- **Dependency:** OpenRouter API key (free tier supported)
+
+### Known Issues
+
+- The app requires an internet connection and a valid OpenRouter API key to function
+- Widget position is not persisted between sessions (resets to center of screen)
+- Windows-only release (cross-platform support planned)
+
+### Technical Notes
+
+- Built with Electron 35 and React 19, bundled via Vite 6
+- Packaged as an NSIS installer via electron-builder
+- Uses `openai/gpt-oss-120b:free` model on OpenRouter
+- All data stored in localStorage (no external databases)
+- Tray icon generated programmatically (no file dependency, works in both dev and production)
+
+---
+
 ## 1.2.0 (2026-07-01)
 
 Adaptive difficulty system — the app now tracks your skill with Elo ratings and auto-adjusts sentence difficulty from A1 through C2.

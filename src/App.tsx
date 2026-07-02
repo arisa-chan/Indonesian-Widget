@@ -144,6 +144,16 @@ function App() {
       const newElo = adjustElo(result.correct)
       setEloRating(newElo)
     } catch (err: any) {
+      // On API error, still mark the attempt as incorrect so the Elo can adjust downward.
+      // This prevents the rating from getting stuck when validation fails.
+      updateTodayAttempt(sentence.indonesian, userTranslation.trim(), false)
+      setSentence((prev) =>
+        prev
+          ? { ...prev, userAttempt: userTranslation.trim(), attemptCorrect: false }
+          : prev
+      )
+      const newElo = adjustElo(false)
+      setEloRating(newElo)
       setError(err.message || 'Failed to check translation')
     }
 

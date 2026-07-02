@@ -5,7 +5,7 @@
 A lightweight, always-on-top desktop widget that helps you learn Indonesian (Bahasa Indonesia) with a new sentence every day. Type your English translation and get AI-powered feedback — all from a frameless, glassmorphism widget that lives in your system tray.
 
 ![Widget Preview](https://img.shields.io/badge/platform-Windows-blue)
-![Version](https://img.shields.io/badge/version-1.2.0-green)
+![Version](https://img.shields.io/badge/version-1.3.0-green)
 
 ## Features
 
@@ -13,7 +13,7 @@ A lightweight, always-on-top desktop widget that helps you learn Indonesian (Bah
 - **Sentence Reset** — Don't like today's sentence? Press Reset to get a completely different one (once per day)
 - **AI-Powered Translation Check** — OpenRouter validates your English translation against the correct answer, accepting natural paraphrases
 - **Vocabulary Panel** — After checking your answer, tap the floating 📚 button to see word-by-word translations used in the sentence
-- **Elo Difficulty Progression** — The app tracks your skill with an Elo rating system (starting at 400 = A1). Correct answers increase your Elo, gradually unlocking harder sentences through A2 → B1 → B2 → C1 → C2. Wrong answers decrease your Elo, giving you easier sentences to rebuild confidence.
+- **Elo Difficulty Progression** — The app tracks your skill with an Elo rating system (starting at 400 = A1). Correct answers grant +20 Elo, gradually unlocking harder sentences through A2 → B1 → B2 → C1 → C2. Wrong answers penalize −40 Elo, quickly easing back to simpler sentences so you never feel stuck.
 - **CEFR Level Indicator** — Each sentence displays its estimated CEFR level (A1–C2) for progress tracking
 - **Fancy Tray Icon** — Indonesian flag (red & white) with gold "ID" monogram in the system tray
 - **Frameless Transparent Widget** — Stays on top of all windows without getting in the way
@@ -62,7 +62,7 @@ To build the installer:
 npm run dist
 ```
 
-This generates an NSIS installer at `release/Indonesian Widget Setup 1.1.0.exe`.
+This generates an NSIS installer at `release/Indonesian Widget Setup 1.3.0.exe`.
 
 To build only the frontend assets (without packaging):
 
