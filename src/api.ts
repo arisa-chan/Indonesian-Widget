@@ -1,5 +1,6 @@
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const FREE_MODEL = 'openai/gpt-oss-120b:free'
+const REQUEST_TIMEOUT_MS = 20000 // 20-second timeout to prevent hanging requests
 
 import { VocabularyItem } from './types'
 
@@ -35,31 +36,39 @@ async function callOpenRouter(
     body.response_format = responseFormat
   }
 
-  const res = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'HTTP-Referer': 'http://localhost',
-      'X-Title': 'Indonesian Widget',
-    },
-    body: JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`OpenRouter API error (${res.status}): ${errText}`)
-  }
+  try {
+    const res = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'http://localhost',
+        'X-Title': 'Indonesian Widget',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
 
-  const data = await res.json()
-  const content = data?.choices?.[0]?.message?.content
-  if (typeof content !== 'string') {
-    throw new Error(
-      'Unexpected API response: missing content. ' +
-      'The model may have returned an empty or malformed reply. Try again.'
-    )
+    if (!res.ok) {
+      const errText = await res.text()
+      throw new Error(`OpenRouter API error (${res.status}): ${errText}`)
+    }
+
+    const data = await res.json()
+    const content = data?.choices?.[0]?.message?.content
+    if (typeof content !== 'string') {
+      throw new Error(
+        'Unexpected API response: missing content. ' +
+        'The model may have returned an empty or malformed reply. Try again.'
+      )
+    }
+    return content.trim()
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return content.trim()
 }
 
 function getDaySeed(): number {
@@ -370,6 +379,103 @@ const SENTENCE_STYLES: SentenceStyle[] = [
   { label: 'instructional "cara"', instruction: 'Write a sentence giving instructions or explaining how to do something — "Cara..." or step-like format in one flowing sentence.', minWords: 6, maxWords: 18, form: 'declarative', structure: 'complex', function: 'instruction' },
 ]
 
+// CEFR level ordering for comparisons
+const CEFR_ORDER: Record<string, number> = { A1: 0, A2: 1, B1: 2, B2: 3, C1: 4, C2: 5 }
+
+// Structure complexity mapped to minimum CEFR level
+const STRUCTURE_MIN_CEFR: Record<string, string> = {
+  simple: 'A1',
+  compound: 'A2',
+  complex: 'B1',
+  'compound-complex': 'B2',
+}
+
+// Functions that are inherently more advanced than their structure suggests.
+// Each entry maps a function substring to its minimum CEFR level.
+const FUNCTION_CEFR_OVERRIDES: [string, string][] = [
+  // Colloquial/substandard forms — B1+
+  ['colloquial', 'B1'],
+  ['colloquial yes-no', 'B1'],
+  ['colloquial already', 'B1'],
+  ['colloquial future', 'B1'],
+  ['colloquial recent past', 'B1'],
+  ['colloquial progressive', 'B1'],
+  ['colloquial desire', 'B1'],
+  ['colloquial liking', 'B1'],
+  ['kok question', 'B1'],
+  ['negation colloquial', 'B1'],
+  ['colloquial prohibition', 'B1'],
+  ['colloquial cause', 'B1'],
+  ['colloquial sequence', 'B1'],
+  // Particles — B1+
+  ['dong particle', 'B1'],
+  ['sih particle', 'B1'],
+  ['deh particle', 'B1'],
+  ['kok particle', 'B1'],
+  ['kan particle', 'B1'],
+  ['deictic particle', 'B2'],
+  ['ya filler', 'B2'],
+  ['combined particles', 'C1'],
+  // Emphasis/intensifiers — B2+
+  ['banget', 'B2'],
+  ['gila intensifier', 'B2'],
+  // Idioms & slang — B1+
+  ['idiom', 'B1'],
+  // Code-switching & regional — C1+
+  ['code-switching', 'C1'],
+  ['Javanese influence', 'C1'],
+  ['Sundanese influence', 'C1'],
+  // Chat/Text — C1+
+  ['chat message', 'C1'],
+  // Advanced relative clauses — B2+
+  ['nested relative clauses', 'B2'],
+  // Gossip/boasting — B1+
+  ['gossip', 'B1'],
+  ['boasting', 'B1'],
+  // Literary/poetic — C1+
+  ['literary', 'C1'],
+  ['poetic', 'C1'],
+  // Formal announcement/academic — B2+
+  ['formal announcement', 'B2'],
+  ['definition', 'B2'],
+  ['instructional', 'B2'],
+  // Complex causative — B2+
+  ['memper-', 'B2'],
+  ['diper-', 'B2'],
+  ['memper-kan', 'B2'],
+]
+
+/**
+ * Determine the minimum CEFR level required for a given sentence style.
+ * Uses structure as the base, then applies function-level overrides.
+ */
+function getMinCefrForStyle(style: SentenceStyle): string {
+  // Start with the structure-based minimum
+  let minCefr = STRUCTURE_MIN_CEFR[style.structure] || 'A1'
+
+  // Check function overrides
+  for (const [pattern, level] of FUNCTION_CEFR_OVERRIDES) {
+    if (style.function.includes(pattern) || style.label.includes(pattern)) {
+      if (CEFR_ORDER[level] > CEFR_ORDER[minCefr]) {
+        minCefr = level
+      }
+    }
+  }
+
+  return minCefr
+}
+
+/**
+ * Filter SENTENCE_STYLES to only include styles appropriate for the target CEFR level.
+ */
+function getStylesForCefr(targetCefr: string): SentenceStyle[] {
+  const targetOrder = CEFR_ORDER[targetCefr] ?? 0
+  return SENTENCE_STYLES.filter((style) => {
+    const styleMin = getMinCefrForStyle(style)
+    return CEFR_ORDER[styleMin] <= targetOrder
+  })
+}
+
 const TOPICS: string[] = [
   'Daily routine & morning habits (waking, bathing, breakfast, commuting to work/school)',
   'Evening & bedtime routines (dinner, relaxing, going to sleep, night activities)',
@@ -558,13 +664,121 @@ const FORBIDDEN_PATTERNS = [
   'Sentences entirely composed of words that appeared in the 3 most recent sentences',
 ]
 
+/**
+ * Returns CEFR-specific grammar and vocabulary constraints for the system prompt.
+ * Each level builds on the previous one — the model is told exactly what grammar
+ * features, structures, and vocabulary are appropriate.
+ */
+function getCefrGrammarConstraints(cefr: string): string {
+  switch (cefr) {
+    case 'A1':
+      return `A1 LEVEL GRAMMAR CONSTRAINTS (BEGINNER — STRICT):
+————— ALLOWED —————
+• SENTENCE STRUCTURE: ONLY simple single-clause sentences. NO compound sentences (no "dan", "tetapi", "atau" joining clauses). NO subordinate clauses.
+• SENTENCE LENGTH: 1–6 words maximum. Keep it very short.
+• VERB FORMS: Root words (no prefix) OR basic "me-" verbs (melihat, membaca, menulis, mendengar, memakan, meminum) OR basic "ber-" verbs (berjalan, berbicara, belajar, bekerja, bermain). NO "me-kan", NO "me-i", NO "memper-", NO "diper-".
+• PASSIVE: Only basic "di-" passive with common verbs (dibuat, dimakan, dilihat, dibeli, dibaca, ditulis). NO agentive "oleh" passive.
+• ASPECT/MODALS: Only these aspect words — "sedang", "sudah", "akan", "mau", "masih", "bisa", "boleh", "harus", "suka", "ingin". NO colloquial forms like "lagi", "udah", "bakal", "pengen", "nggak".
+• NEGATION: Only "tidak" and "bukan" and "belum". NO "nggak", "gak", "belum tentu".
+• AFFIXES: Basic "ber-" and "me-" only. "se-" for numbers (seorang, sebuah, seekor). Basic "-nya" possessive (bukunya, namanya). Basic "-an" nouns (makanan, minuman). NO "ter-" (accidental), NO "ke-an" (adversative), NO "pe-an", NO "per-an", NO "ber-an".
+• REDUPLICATION: ONLY plural reduplication (anak-anak, buku-buku). NO other reduplication types.
+• PARTICLES: ONLY "lah" and "kah". NO "sih", "dong", "deh", "kok", "kan", "nih", "tuh", "pun".
+• REGISTER: Standard Indonesian (bahasa baku) or neutral everyday Indonesian. NO slang, NO Jakarta-style colloquial, NO regional dialects.
+• PRONOUNS: "saya", "aku", "kamu", "dia", "mereka", "kita". NO "gue", "lo", "elu".
+• QUESTIONS: Only with "Apa", "Siapa", "Di mana", "Ke mana", "Kapan", "Berapa", "Apakah". NO colloquial question forms.
+• VOCABULARY: High-frequency everyday words only. Food, family, colors, numbers, common objects, daily activities, basic adjectives (besar, kecil, bagus, buruk, panas, dingin).
+• INTERJECTIONS: "Wah!", "Aduh!", "Halo!" are acceptable.
+• IMPERATIVES: Bare commands or "tolong" + verb. "Jangan" for prohibitions. "Mari"/"Ayo" for invitations.`
+
+    case 'A2':
+      return `A2 LEVEL GRAMMAR CONSTRAINTS (ELEMENTARY):
+————— ALLOWED (everything from A1, PLUS) —————
+• SENTENCE STRUCTURE: Simple single-clause AND compound sentences using "dan", "tetapi", "atau", "lalu", "kemudian". NO complex sentences with subordinate clauses (no "karena", "jika", "ketika", etc.).
+• SENTENCE LENGTH: 1–12 words.
+• VERB FORMS: All A1 forms PLUS "di-" passive with agent "oleh" (dimasak oleh ibu), bare passive (Buku itu saya baca), "ter-" SUPERLATIVE only (terbaik, termahal — NOT accidental "terjatuh").
+• ASPECT/MODALS: All A1 forms PLUS "pernah", "baru saja", "mungkin", "perlu". Still NO colloquial forms ("lagi", "udah", "bakal", "pengen").
+• NEGATION: A1 forms only. "Nggak"/"gak" may be used VERY sparingly in natural conversation but prefer "tidak".
+• AFFIXES: All A1 forms PLUS basic "ter-" superlative, "ke-an" for abstract nouns (kesehatan, kebersihan, kecantikan — NOT adversative like kedinginan), "pe-" agent nouns (pembaca, penulis), "-wan/-wati" (wartawan, wisatawan), "se-nya" (sebaiknya, seharusnya). NO "me-kan", NO "me-i", NO "memper-", NO "diper-", NO "ke-an" adversative, NO "pe-an", NO "per-an".
+• REDUPLICATION: Plural reduplication PLUS basic adverb reduplication (pelan-pelan, hati-hati, tiba-tiba). NO leisure reduplication (jalan-jalan), NO intensity reduplication.
+• PARTICLES: "lah", "kah". Still NO colloquial particles ("sih", "dong", "deh", "kok").
+• REGISTER: Standard or everyday Indonesian. Minimal colloquial forms. NO heavy slang.
+• PRONOUNS: Same as A1. NO "gue"/"lo".
+• QUESTIONS: All A1 forms PLUS "Mengapa"/"Kenapa", "Bagaimana", "Yang mana", tag questions with "ya" and "kan". Soft requests with "Bisa...?".
+• COMPARISONS: "Lebih...daripada", "paling", "ter-".
+• SIMILES: Basic "seperti" comparisons.
+• VOCABULARY: Common everyday words plus basic descriptive adjectives, feelings, weather, transportation, shopping.`
+
+    case 'B1':
+      return `B1 LEVEL GRAMMAR CONSTRAINTS (INTERMEDIATE):
+————— ALLOWED (everything from A1–A2, PLUS) —————
+• SENTENCE STRUCTURE: Simple, compound, AND complex sentences with ONE subordinate clause. Use "karena", "jika"/"kalau", "ketika"/"saat", "sebelum", "setelah"/"sesudah", "supaya"/"agar", "walaupun"/"meskipun", "sehingga". NO compound-complex (2+ subordinate clauses).
+• SENTENCE LENGTH: 2–18 words.
+• VERB FORMS: All A2 forms PLUS "me-kan" causative (memberikan, mengirimkan, menjelaskan), "me-i" locative (menemani, memasuki), "ter-" accidental/stative (terjatuh, tertidur, terbuka). NO "memper-", NO "diper-", NO "memper-kan".
+• ASPECT/MODALS: All A2 forms PLUS colloquial forms acceptable — "lagi" (progressive), "udah" (perfective), "bakal" (future), "barusan" (recent past). "Ternyata", "rupanya" for realizations.
+• NEGATION: All forms including "nggak"/"gak" and "belum tentu". NO double negation yet.
+• AFFIXES: All A2 forms PLUS "ke-an" adversative (kedinginan, kehujanan, kepanasan), "pe-an" process nouns (pembangunan, pendidikan), "ber-an" reciprocal (bersalaman, berpelukan). NO "per-an", NO "memper-", NO "diper-".
+• REDUPLICATION: All A2 forms PLUS variety (sayur-sayuran), leisure (jalan-jalan, duduk-duduk), and intensity adjectives (besar-besar, enak-enak). NO "se-...-nya" reduplication.
+• PARTICLES: "lah", "kah", "pun", AND colloquial particles — "sih", "dong", "deh", "kok", "kan" (emphatic). NO "nih"/"tuh", NO combined particles.
+• REGISTER: Mix of standard and colloquial Indonesian. Jakarta-influenced speech acceptable with moderation. "Gue"/"lo" acceptable sometimes.
+• RELATIVE CLAUSES: Single "yang" relative clauses.
+• REPORTED SPEECH: Basic reported speech ("Dia bilang bahwa...").
+• VOCABULARY: Broader everyday vocabulary including opinions, emotions, work, abstract concepts. Some idiomatic expressions acceptable.`
+
+    case 'B2':
+      return `B2 LEVEL GRAMMAR CONSTRAINTS (UPPER INTERMEDIATE):
+————— ALLOWED (everything from A1–B1, PLUS) —————
+• SENTENCE STRUCTURE: All structures including compound-complex (2+ clause types woven together). Use a wider range of conjunctions: "padahal", "bahkan", "apalagi", "malahan", "sementara", "sambil", "sejak", "sampai", "selama", "asal(kan)", "seandainya", "kecuali", "begitu", "demi", "maka".
+• SENTENCE LENGTH: 3–25 words.
+• VERB FORMS: All forms including "memper-" (memperbaiki, mempercepat), "diper-" passive (diperbaiki, diperlukan), "memper-kan" (mempertimbangkan).
+• AFFIXES: All forms including "per-an" abstracts (pertemuan, pergaulan, perkawinan).
+• NEGATION: All forms including double negation ("bukan tidak...", "tidak...tidak").
+• PARTICLES: All colloquial particles including "nih"/"tuh" (deictic) and "ya" (filler). Combined particles acceptable.
+• REGISTER: Full register range — formal, informal, colloquial, Jakarta-style.
+• PRONOUNS: All including "gue"/"lo", "elu".
+• RELATIVE CLAUSES: Location and time relatives ("tempat di mana", "saat di mana"). Multi-"yang" is OK but not required.
+• NARRATIVE: First and third person narratives, direct speech quotations.
+• COMPARISONS: Formal "dibandingkan", "daripada" in all uses.
+• VOCABULARY: Broad vocabulary including professional, academic, and abstract terms.`
+
+    case 'C1':
+      return `C1 LEVEL GRAMMAR CONSTRAINTS (ADVANCED):
+————— ALLOWED (everything from A1–B2, PLUS) —————
+• SENTENCE STRUCTURE: All structures including very long compound-complex sentences (up to 30 words). Literary and poetic constructions.
+• SENTENCE LENGTH: 3–30 words.
+• ALL GRAMMAR FEATURES: The full Indonesian grammar system — all affixes, all particles, all reduplication types, all clause structures.
+• REGIONAL FLAVORS: Javanese-influenced ("lho", "to", "wis"), Sundanese-influenced ("atuh", "teh", "mah", "euy"), Betawi-influenced ("aye", "ente").
+• CODE-SWITCHING: Natural Indonesian-English mixing acceptable.
+• CHAT/TEXT STYLE: WhatsApp abbreviations acceptable.
+• FORMAL STYLES: Official announcements, academic definitions, instructional text.
+• LITERARY: Poetic similes ("laksana", "bagai"), formal time markers ("tatkala", "manakala"), formal purpose ("guna").
+• VOCABULARY: Sophisticated, nuanced, domain-specific vocabulary. Obscure idioms. Cultural and political references.`
+
+    case 'C2':
+      return `C2 LEVEL GRAMMAR CONSTRAINTS (MASTERY):
+————— ALLOWED (everything) —————
+• The full expressive range of Indonesian — any structure, any register, any vocabulary.
+• Very long flowing sentences (up to 35 words) with multiple embedded clauses.
+• Sophisticated code-switching, regional dialect mixing, poetic/literary language.
+• Highly specialized vocabulary and rare idiomatic expressions.
+• The sentence should feel like it was written or spoken by a highly educated native speaker.`
+
+    default:
+      return `A1 LEVEL GRAMMAR CONSTRAINTS (BEGINNER — STRICT):
+• ONLY simple single-clause sentences, 1–6 words.
+• Basic vocabulary: food, family, colors, numbers, daily activities.
+• Basic "me-" and "ber-" verbs only. No complex affixes.
+• No colloquial particles. No slang.`
+  }
+}
+
 export async function generateSentence(
   apiKey: string,
   previousSentences: string[] = [],
   targetCefr: string = 'A1'
 ): Promise<{ indonesian: string; translation: string; cefr: string; vocabulary: VocabularyItem[] }> {
   const seed = getDaySeed()
-  const style = pickFrom(SENTENCE_STYLES, seed)
+  const cefrStyles = getStylesForCefr(targetCefr)
+  const style = pickFrom(cefrStyles, seed)
   const topic = pickFrom(TOPICS, seed * 17 + 31)
   const mood = pickFrom(MOODS, seed * 13 + 7)
   const register = pickFrom(REGISTERS, seed * 19 + 11)
@@ -576,42 +790,40 @@ export async function generateSentence(
 
   const forbiddenList = FORBIDDEN_PATTERNS.map((p, i) => `${i + 1}. ${p}`).join('\n')
 
-  const systemPrompt = `You are a wildly creative Bahasa Indonesia teacher. Generate ONE Indonesian sentence for a ${targetCefr}-level learner. Every single day must be completely different — different structure, different rhythm, different vocabulary, different everything.
+  // CEFR-specific grammar constraints — the model MUST follow these.
+  const cefrGrammar = getCefrGrammarConstraints(targetCefr)
+
+  const systemPrompt = `You are a patient Bahasa Indonesia teacher. Generate exactly ONE Indonesian sentence for a ${targetCefr}-level learner (beginner to advanced). The sentence must be STRICTLY appropriate for ${targetCefr} level — not easier, not harder.
+
+${cefrGrammar}
 
 BLOCKED PATTERNS — never produce anything like these:
 ${forbiddenList}
 ${previousList}
 
-ABSOLUTE VARIETY MANDATE:
-- Sentence TYPE must bounce around: declarative statements, interrogative questions, imperative commands, exclamatory outbursts, optative wishes.
-- Sentence STRUCTURE must cycle: simple single-clause, compound with conjunctions, complex with subordinate clauses, compound-complex with multiple clause types woven together.
-- Sentence LENGTH must vary wildly: from terse 1-word fragments to sprawling 25+ word sentences that paint a full picture.
-- VOCABULARY must be diverse. Never lean on the same nouns/verbs/adjectives two days in a row. Explore the entire Indonesian lexicon appropriate for ${targetCefr}.
-- The sentence must sound NATURAL — the way real Indonesians actually speak in daily life, not robotic textbook examples.
-- Deploy the full range of Indonesian grammar: "me-" and "ber-" verbs, "di-" passives, "ter-" accidentals/statives, "me-kan" and "me-i" suffixes, "ke-an" and "pe-an"/"per-an" circumfixes, reduplication for plurals/reciprocals/intensity, "se-" prefix, "-nya" suffix in all its uses, particles like "lah"/"kah"/"pun"/"sih"/"dong"/"deh"/"kok".
-- Vary the REGISTER: some days use formal "bahasa baku", other days informal colloquial, other days Jakarta-influenced casual speech with "gue"/"lo".
-- Vary the PERSON: sometimes first-person, sometimes second-person, sometimes third-person, sometimes impersonal general statements.
-- Occasionally use common Indonesian idioms, expressions, or cultural references.
-- Occasionally use interjections like "aduh", "wah", "aduh", "ih", "nah", "lho" where natural.
-- Use a rich variety of conjunctions beyond just "dan" and "tetapi": "lalu", "kemudian", "jadi", "padahal", "sementara", "sambil", "sejak", "sampai", "walaupun", "meskipun", "supaya", "agar", "sehingga", "maka", "asal", "seandainya".
+VARIETY RULES (within the ${targetCefr} constraints above):
+- Vary the topic and mood each day. Never repeat the same communicative situation.
+- The sentence must sound NATURAL — the way real Indonesians actually speak, not robotic textbook examples.
+- Use vocabulary appropriate for ${targetCefr} level. At A1/A2, stick to high-frequency everyday words. At C1/C2, you may use sophisticated or specialized terms.
 
-CRITICAL: Each day's sentence must feel like it came from a completely different speaker, in a completely different situation, with a completely different rhythm and vocabulary. No two days should ever feel similar.
+CRITICAL: The sentence MUST be exactly at ${targetCefr} difficulty. If you generate a sentence that is above or below this level, it is WRONG.
 
 Return ONLY a JSON object with these exact fields:
 {
   "indonesian": "...",
   "english": "...",
-  "cefr": "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
+  "cefr": "${targetCefr}",
   "vocabulary": [
     {"word": "makan", "translation": "eat"},
     {"word": "nasi", "translation": "rice"}
   ]
 }
-- The "cefr" field must be your estimate of this sentence's CEFR difficulty level (A1 through C2).
+- The "cefr" field must be "${targetCefr}" (the target level).
 - The "vocabulary" field must list 3-8 key words from the Indonesian sentence paired with their English translations. Include only content words (nouns, verbs, adjectives, adverbs) — skip particles and prepositions unless essential.`
 
   const userPrompt = `TODAY'S SENTENCE SPECIFICATION:
 —————————————————————
+Target CEFR level: ${targetCefr}
 Topic domain: ${topic}
 Tone/mood: ${mood}
 Register: ${register}
@@ -622,7 +834,7 @@ Communicative function: ${style.function}
 Word count: ${style.minWords}—${style.maxWords}
 Instruction: ${style.instruction}
 —————————————————————
-Generate exactly ONE Indonesian sentence that satisfies ALL of the above parameters simultaneously. Make it feel spontaneous, natural, and completely unlike any sentence from previous days. Do not force it — the sentence should feel like it naturally emerged from a real conversation or thought.`
+REMINDER: This must be a ${targetCefr}-level sentence. Follow the ${targetCefr} grammar constraints from the system prompt EXACTLY. Generate exactly ONE Indonesian sentence that satisfies ALL of the above parameters simultaneously. Make it feel spontaneous, natural, and completely unlike any sentence from previous days. Do not force it — the sentence should feel like it naturally emerged from a real conversation or thought.`
 
   const result = await callOpenRouter(apiKey, systemPrompt, userPrompt, 1.0, { type: 'json_object' })
 

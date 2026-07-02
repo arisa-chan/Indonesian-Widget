@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getApiKey, saveApiKey } from '../api'
+import { resetAllProgress } from '../storage'
 
 interface SettingsPanelProps {
   onClose: () => void
@@ -9,6 +10,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [key, setKey] = useState(getApiKey() || '')
   const [saved, setSaved] = useState(false)
   const [startOnBoot, setStartOnBoot] = useState(false)
+  const [resetConfirm, setResetConfirm] = useState(false)
 
   useEffect(() => {
     window.electronAPI?.getLoginItem().then(setStartOnBoot).catch(() => {})
@@ -26,6 +28,16 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
     const newVal = !startOnBoot
     setStartOnBoot(newVal)
     window.electronAPI?.setLoginItem(newVal)
+  }
+
+  const handleReset = () => {
+    if (!resetConfirm) {
+      setResetConfirm(true)
+      return
+    }
+    resetAllProgress()
+    setResetConfirm(false)
+    onClose()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -72,6 +84,20 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
           <button className="cancel-btn" onClick={onClose}>
             Close
           </button>
+        </div>
+
+        <div className="settings-reset-section">
+          <button
+            className={resetConfirm ? 'reset-btn-danger' : 'reset-btn-secondary'}
+            onClick={handleReset}
+          >
+            {resetConfirm ? '⚠️ Click again to confirm reset' : 'Reset All Progress'}
+          </button>
+          {resetConfirm && (
+            <p className="reset-warning">
+              This will erase your Elo rating and all sentence history.
+            </p>
+          )}
         </div>
       </div>
     </div>

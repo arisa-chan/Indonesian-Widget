@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 interface TranslationInputProps {
   onSubmit: (translation: string) => void
@@ -9,6 +9,14 @@ interface TranslationInputProps {
 export function TranslationInput({ onSubmit, disabled, alreadyCorrect }: TranslationInputProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const submittingRef = useRef(false)
+
+  // Reset the submission guard when the parent re-enables the input
+  useEffect(() => {
+    if (!disabled) {
+      submittingRef.current = false
+    }
+  }, [disabled])
 
   useEffect(() => {
     if (!alreadyCorrect && inputRef.current) {
@@ -16,17 +24,20 @@ export function TranslationInput({ onSubmit, disabled, alreadyCorrect }: Transla
     }
   }, [alreadyCorrect])
 
-  const handleSubmit = () => {
-    if (value.trim() && !disabled) {
-      onSubmit(value.trim())
+  const handleSubmit = useCallback(() => {
+    const trimmed = value.trim()
+    // Use ref-based guard so rapid clicks can't slip past stale closure state
+    if (trimmed && !disabled && !submittingRef.current) {
+      submittingRef.current = true
+      onSubmit(trimmed)
     }
-  }
+  }, [value, disabled, onSubmit])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSubmit()
     }
-  }
+  }, [handleSubmit])
 
   return (
     <div className="input-area">

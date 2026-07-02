@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { TitleBar } from './components/TitleBar'
 import { SentenceDisplay } from './components/SentenceDisplay'
 import { TranslationInput } from './components/TranslationInput'
@@ -93,6 +93,8 @@ function App() {
     return cleanup
   }, [loadSentence])
 
+  const checkingRef = useRef(false)
+
   const handleReset = async () => {
     if (!resetAvailable) return
     setResetting(true)
@@ -115,8 +117,9 @@ function App() {
   }
 
   const handleCheck = async (userTranslation: string) => {
-    if (!sentence || !userTranslation.trim()) return
+    if (!sentence || !userTranslation.trim() || checkingRef.current) return
 
+    checkingRef.current = true
     setChecking(true)
     setError(null)
 
@@ -124,6 +127,7 @@ function App() {
     if (!apiKey) {
       setShowSettings(true)
       setChecking(false)
+      checkingRef.current = false
       return
     }
 
@@ -144,20 +148,26 @@ function App() {
       const newElo = adjustElo(result.correct)
       setEloRating(newElo)
     } catch (err: any) {
-      // On API error, still mark the attempt as incorrect so the Elo can adjust downward.
-      // This prevents the rating from getting stuck when validation fails.
-      updateTodayAttempt(sentence.indonesian, userTranslation.trim(), false)
-      setSentence((prev) =>
-        prev
-          ? { ...prev, userAttempt: userTranslation.trim(), attemptCorrect: false }
-          : prev
-      )
-      const newElo = adjustElo(false)
-      setEloRating(newElo)
-      setError(err.message || 'Failed to check translation')
+      // Handle abort errors (request timeout) gracefully
+      if (err?.name === 'AbortError') {
+        setError('Request timed out. The server is taking too long — please try again.')
+      } else {
+        // On API error, still mark the attempt as incorrect so the Elo can adjust downward.
+        // This prevents the rating from getting stuck when validation fails.
+        updateTodayAttempt(sentence.indonesian, userTranslation.trim(), false)
+        setSentence((prev) =>
+          prev
+            ? { ...prev, userAttempt: userTranslation.trim(), attemptCorrect: false }
+            : prev
+        )
+        const newElo = adjustElo(false)
+        setEloRating(newElo)
+        setError(err.message || 'Failed to check translation')
+      }
     }
 
     setChecking(false)
+    checkingRef.current = false
   }
 
   const handleSettingsClose = () => {

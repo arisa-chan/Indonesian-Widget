@@ -123,3 +123,12 @@ export function adjustElo(correct: boolean): number {
   localStorage.setItem(ELO_KEY, String(newRating))
   return newRating
 }
+
+/**
+ * Clear all stored progress data (sentences, Elo rating, etc.).
+ * Used when the user wants a completely fresh start.
+ */
+export function resetAllProgress(): void {
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(ELO_KEY)
+}
